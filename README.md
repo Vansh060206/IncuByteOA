@@ -81,18 +81,18 @@ Audit timeline logging system database sync states, model creations, and purchas
 
 ```mermaid
 graph LR
-    subgraph Client Environment (Vercel)
+    subgraph "Client Environment (Vercel)"
         A[React SPA / Tailwind CSS]
         B[React Query / Axios]
     end
 
-    subgraph API Environment (Render)
+    subgraph "API Environment (Render)"
         C[Express Controller Routing]
         D[JWT Authentication Middleware]
         E[Prisma ORM Client v7]
     end
 
-    subgraph Cloud Storage (Supabase)
+    subgraph "Cloud Storage (Supabase)"
         F[(PostgreSQL Cluster)]
         G[(PgBouncer Connection Pooler)]
     end
