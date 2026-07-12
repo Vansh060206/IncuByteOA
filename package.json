@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "backend"
+    "backend",
+    "frontend"
   ],
   "scripts": {
-    "test:backend": "npm run test --workspace=backend"
+    "test:backend": "npm run test --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build:frontend": "npm run build --workspace=frontend"
   }
 }
