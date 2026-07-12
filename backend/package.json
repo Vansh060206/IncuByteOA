@@ -6,11 +6,13 @@
     "build": "tsc"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/morgan": "^1.9.10",
     "@types/node": "^20.14.9",
     "typescript": "^5.5.2"
   },
   "dependencies": {
+    "express": "^5.2.1",
     "express-validator": "^7.3.2",
     "morgan": "^1.11.0",
     "winston": "^3.19.0"
