@@ -6,7 +6,10 @@
     "build": "tsc"
   },
   "devDependencies": {
-    "typescript": "^5.5.2",
-    "@types/node": "^20.14.9"
+    "@types/node": "^20.14.9",
+    "typescript": "^5.5.2"
+  },
+  "dependencies": {
+    "express-validator": "^7.3.2"
   }
 }
