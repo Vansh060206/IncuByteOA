@@ -6,11 +6,18 @@ This project is built using a Test-Driven Development (TDD) approach, featuring 
 
 ---
 
+## 🚀 Live Deployments
+
+* **Frontend Application (Vercel)**: [https://incu-byte-oa-frontend.vercel.app/](https://incu-byte-oa-frontend.vercel.app/)
+* **Backend API Gateway (Render)**: [https://incubyteoa.onrender.com/api/v1](https://incubyteoa.onrender.com/api/v1)
+
+---
+
 ## Technical Stack
 
 * **Monorepo Structure**: Managed via npm workspaces.
 * **Backend**: Node.js, TypeScript, Express, Prisma ORM, PostgreSQL (Postgres schema config).
-* **Frontend**: React (v19), TypeScript, Vite, Vanilla CSS design system.
+* **Frontend**: React (v19), TypeScript, Vite, Tailwind CSS design system.
 * **Testing & CI/CD**: Jest, Supertest, GitHub Actions.
 
 ---
@@ -92,39 +99,34 @@ npm run test:backend
 
 ### Test Suite Results:
 * **Total test suites**: 3 passed, 3 total
-* **Total integration tests**: 15 passed, 15 total
+* **Total integration tests**: 12 passed, 12 total
 
 ```text
 PASS tests/integration/health.test.ts
   GET /api/v1/health
-    √ should return 200 and healthy status when DB is reachable (55 ms)
+    √ should return 200 and healthy status when DB is reachable (58 ms)
     √ should return 500 when database connection fails (9 ms)
 
 PASS tests/integration/vehicle.test.ts
-  Vehicle Integration Tests
-    POST /api/v1/vehicles
-      √ should create a vehicle successfully (85 ms)
-      √ should fail validation if fields are missing (10 ms)
-      √ should fail if license plate is duplicate (10 ms)
+  Vehicle and Inventory Integration Tests
     GET /api/v1/vehicles
-      √ should list only the user's vehicles for USER role (7 ms)
-    GET /api/v1/vehicles/search
-      √ should search vehicles successfully (7 ms)
+      √ should return 401 Unauthorized when request is unauthenticated (56 ms)
+      √ should return paginated list of vehicles when authenticated (11 ms)
+    POST /api/v1/vehicles
+      √ should allow ADMIN to create a new vehicle (41 ms)
+      √ should block USER role from creating a vehicle (10 ms)
     POST /api/v1/vehicles/:id/purchase
-      √ should purchase a vehicle successfully and decrement stock (7 ms)
-      √ should fail purchase if vehicle is out of stock (6 ms)
-    POST /api/v1/vehicles/:id/restock
-      √ should allow admin to restock quantity (8 ms)
-      √ should reject restock for non-admin user (10 ms)
+      √ should allow user to purchase vehicle (10 ms)
+      √ should fail purchase if stock is empty (8 ms)
 
 PASS tests/integration/auth.test.ts
   Auth Integration Tests
     POST /api/v1/auth/register
-      √ should register a new user successfully (435 ms)
-      √ should return 400 when email is already registered (9 ms)
+      √ should register a new user successfully (395 ms)
+      √ should return 400 when email is already registered (12 ms)
     POST /api/v1/auth/login
-      √ should log in existing user with correct credentials (10 ms)
-      √ should return 401 on incorrect password (6 ms)
+      √ should log in existing user with correct credentials (11 ms)
+      √ should return 401 on incorrect password (8 ms)
 ```
 
 ---
