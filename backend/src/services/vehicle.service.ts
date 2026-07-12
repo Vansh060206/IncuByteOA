@@ -75,4 +75,48 @@ export class VehicleService {
 
     return this.vehicleRepository.delete(id);
   }
+
+  async searchVehicles(filters: {
+    make?: string;
+    model?: string;
+    category?: string;
+    minPrice?: number;
+    maxPrice?: number;
+  }): Promise<Vehicle[]> {
+    return this.vehicleRepository.search(filters);
+  }
+
+  async purchaseVehicle(id: string): Promise<Vehicle> {
+    const vehicle = await this.vehicleRepository.findById(id);
+    if (!vehicle) {
+      throw new AppError('Vehicle not found', 404);
+    }
+
+    if (vehicle.quantity <= 0) {
+      throw new AppError('Vehicle is out of stock', 400);
+    }
+
+    return this.vehicleRepository.update(id, {
+      quantity: vehicle.quantity - 1,
+    });
+  }
+
+  async restockVehicle(id: string, amount: number, role: string): Promise<Vehicle> {
+    if (role !== 'ADMIN') {
+      throw new AppError('Access denied: Admins only', 403);
+    }
+
+    const vehicle = await this.vehicleRepository.findById(id);
+    if (!vehicle) {
+      throw new AppError('Vehicle not found', 404);
+    }
+
+    if (amount <= 0) {
+      throw new AppError('Restock amount must be greater than 0', 400);
+    }
+
+    return this.vehicleRepository.update(id, {
+      quantity: vehicle.quantity + amount,
+    });
+  }
 }

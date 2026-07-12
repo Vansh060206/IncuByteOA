@@ -32,6 +32,9 @@ model Vehicle {
   name         String
   make         String
   model        String
+  category     String
+  price        Float
+  quantity     Int      @default(0)
   year         Int
   color        String
   licensePlate String   @unique

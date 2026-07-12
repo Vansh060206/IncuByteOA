@@ -10,7 +10,7 @@ export class VehicleController {
 
   createVehicle = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { name, make, model, year, color, licensePlate } = req.body;
+      const { name, make, model, year, color, licensePlate, category, price, quantity } = req.body;
       const userId = req.user!.id;
 
       const vehicle = await this.vehicleService.createVehicle({
@@ -20,6 +20,9 @@ export class VehicleController {
         year,
         color,
         licensePlate,
+        category,
+        price: Number(price),
+        quantity: quantity !== undefined ? Number(quantity) : 0,
         userId,
       });
 
@@ -96,6 +99,60 @@ export class VehicleController {
       return res.status(200).json({
         success: true,
         message: 'Vehicle deleted successfully',
+        data: vehicle,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  searchVehicles = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { make, model, category, minPrice, maxPrice } = req.query;
+
+      const vehicles = await this.vehicleService.searchVehicles({
+        make: make as string,
+        model: model as string,
+        category: category as string,
+        minPrice: minPrice ? Number(minPrice) : undefined,
+        maxPrice: maxPrice ? Number(maxPrice) : undefined,
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: vehicles,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  purchaseVehicle = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const vehicle = await this.vehicleService.purchaseVehicle(id as string);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Vehicle purchased successfully',
+        data: vehicle,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  restockVehicle = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const { quantity } = req.body;
+      const role = req.user!.role;
+
+      const vehicle = await this.vehicleService.restockVehicle(id as string, Number(quantity), role);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Vehicle restocked successfully',
         data: vehicle,
       });
     } catch (error) {

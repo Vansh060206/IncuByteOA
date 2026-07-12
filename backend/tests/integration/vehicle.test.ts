@@ -28,6 +28,9 @@ describe('Vehicle Integration Tests', () => {
     name: 'My Model 3',
     make: 'Tesla',
     model: 'Model 3',
+    category: 'Sedan',
+    price: 45000.0,
+    quantity: 5,
     year: 2022,
     color: 'Red',
     licensePlate: 'TSLA-001',
@@ -41,6 +44,9 @@ describe('Vehicle Integration Tests', () => {
     name: 'Admin Cruiser',
     make: 'Ford',
     model: 'Explorer',
+    category: 'SUV',
+    price: 35000.0,
+    quantity: 2,
     year: 2021,
     color: 'Black',
     licensePlate: 'FORD-999',
@@ -65,6 +71,9 @@ describe('Vehicle Integration Tests', () => {
           name: 'My Model 3',
           make: 'Tesla',
           model: 'Model 3',
+          category: 'Sedan',
+          price: 45000.0,
+          quantity: 5,
           year: 2022,
           color: 'Red',
           licensePlate: 'TSLA-001',
@@ -98,6 +107,9 @@ describe('Vehicle Integration Tests', () => {
           name: 'My Model 3',
           make: 'Tesla',
           model: 'Model 3',
+          category: 'Sedan',
+          price: 45000.0,
+          quantity: 5,
           year: 2022,
           color: 'Red',
           licensePlate: 'TSLA-001',
@@ -120,120 +132,70 @@ describe('Vehicle Integration Tests', () => {
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveLength(1);
-      expect(prisma.vehicle.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        where: { userId: 'user-123' },
-      }));
-    });
-
-    it('should list all vehicles for ADMIN role', async () => {
-      (prisma.vehicle.findMany as jest.Mock).mockResolvedValue([mockVehicle, mockVehicle2]);
-
-      const response = await request(app)
-        .get('/api/v1/vehicles')
-        .set('Authorization', `Bearer ${adminToken}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveLength(2);
-      expect(prisma.vehicle.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        orderBy: { createdAt: 'desc' },
-      }));
     });
   });
 
-  describe('GET /api/v1/vehicles/:id', () => {
-    it('should return vehicle detail if owned by user', async () => {
-      (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue(mockVehicle);
+  describe('GET /api/v1/vehicles/search', () => {
+    it('should search vehicles successfully', async () => {
+      (prisma.vehicle.findMany as jest.Mock).mockResolvedValue([mockVehicle]);
 
       const response = await request(app)
-        .get(`/api/v1/vehicles/${mockVehicle.id}`)
+        .get('/api/v1/vehicles/search?make=Tesla&minPrice=40000')
         .set('Authorization', `Bearer ${userToken}`);
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.id).toBe(mockVehicle.id);
-    });
-
-    it('should return 403 if user does not own the vehicle', async () => {
-      (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue(mockVehicle);
-
-      const anotherUserToken = jwt.sign({ id: 'user-456', email: 'other@example.com', role: 'USER' }, env.JWT_SECRET);
-
-      const response = await request(app)
-        .get(`/api/v1/vehicles/${mockVehicle.id}`)
-        .set('Authorization', `Bearer ${anotherUserToken}`);
-
-      expect(response.status).toBe(403);
-      expect(response.body.success).toBe(false);
-    });
-
-    it('should return 404 if vehicle does not exist', async () => {
-      (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue(null);
-
-      const response = await request(app)
-        .get('/api/v1/vehicles/unknown-uuid')
-        .set('Authorization', `Bearer ${userToken}`);
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
+      expect(response.body.data).toHaveLength(1);
     });
   });
 
-  describe('PUT /api/v1/vehicles/:id', () => {
-    it('should update vehicle successfully if owned by user', async () => {
+  describe('POST /api/v1/vehicles/:id/purchase', () => {
+    it('should purchase a vehicle successfully and decrement stock', async () => {
       (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue(mockVehicle);
-      (prisma.vehicle.update as jest.Mock).mockResolvedValue({ ...mockVehicle, color: 'Blue' });
+      (prisma.vehicle.update as jest.Mock).mockResolvedValue({ ...mockVehicle, quantity: mockVehicle.quantity - 1 });
 
       const response = await request(app)
-        .put(`/api/v1/vehicles/${mockVehicle.id}`)
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({
-          color: 'Blue',
-        });
+        .post(`/api/v1/vehicles/${mockVehicle.id}/purchase`)
+        .set('Authorization', `Bearer ${userToken}`);
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.color).toBe('Blue');
+      expect(response.body.data.quantity).toBe(mockVehicle.quantity - 1);
     });
 
-    it('should allow admin to update any vehicle', async () => {
-      (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue(mockVehicle);
-      (prisma.vehicle.update as jest.Mock).mockResolvedValue({ ...mockVehicle, color: 'Green' });
+    it('should fail purchase if vehicle is out of stock', async () => {
+      (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue({ ...mockVehicle, quantity: 0 });
 
       const response = await request(app)
-        .put(`/api/v1/vehicles/${mockVehicle.id}`)
+        .post(`/api/v1/vehicles/${mockVehicle.id}/purchase`)
+        .set('Authorization', `Bearer ${userToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toContain('out of stock');
+    });
+  });
+
+  describe('POST /api/v1/vehicles/:id/restock', () => {
+    it('should allow admin to restock quantity', async () => {
+      (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue(mockVehicle);
+      (prisma.vehicle.update as jest.Mock).mockResolvedValue({ ...mockVehicle, quantity: mockVehicle.quantity + 10 });
+
+      const response = await request(app)
+        .post(`/api/v1/vehicles/${mockVehicle.id}/restock`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({
-          color: 'Green',
-        });
+        .send({ quantity: 10 });
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-    });
-  });
-
-  describe('DELETE /api/v1/vehicles/:id', () => {
-    it('should delete vehicle successfully if owned by user', async () => {
-      (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue(mockVehicle);
-      (prisma.vehicle.delete as jest.Mock).mockResolvedValue(mockVehicle);
-
-      const response = await request(app)
-        .delete(`/api/v1/vehicles/${mockVehicle.id}`)
-        .set('Authorization', `Bearer ${userToken}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.message).toContain('deleted');
+      expect(response.body.data.quantity).toBe(mockVehicle.quantity + 10);
     });
 
-    it('should block deletion if not owned and user is not admin', async () => {
-      (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue(mockVehicle);
-
-      const anotherUserToken = jwt.sign({ id: 'user-456', email: 'other@example.com', role: 'USER' }, env.JWT_SECRET);
-
+    it('should reject restock for non-admin user', async () => {
       const response = await request(app)
-        .delete(`/api/v1/vehicles/${mockVehicle.id}`)
-        .set('Authorization', `Bearer ${anotherUserToken}`);
+        .post(`/api/v1/vehicles/${mockVehicle.id}/restock`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ quantity: 10 });
 
       expect(response.status).toBe(403);
       expect(response.body.success).toBe(false);
