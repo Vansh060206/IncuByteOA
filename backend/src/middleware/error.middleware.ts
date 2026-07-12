@@ -21,7 +21,7 @@ export const errorHandler = (
     logger.error(`Unhandled Error: ${err.message}`, { stack: err.stack });
   }
 
-  // Handle Prisma database errors
+  // Under Prisma database errors
   if (err.name === 'PrismaClientKnownRequestError') {
     statusCode = 400;
     message = 'Database constraint violation';

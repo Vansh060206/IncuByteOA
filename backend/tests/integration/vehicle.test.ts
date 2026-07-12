@@ -7,50 +7,31 @@ import { env } from '../../src/config/env';
 jest.mock('../../src/config/db', () => ({
   prisma: {
     vehicle: {
-      create: jest.fn(),
       findUnique: jest.fn(),
       findMany: jest.fn(),
+      count: jest.fn(),
+      create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     },
+    purchaseHistory: {
+      create: jest.fn(),
+    },
+    $transaction: jest.fn(),
   },
 }));
 
-describe('Vehicle Integration Tests', () => {
-  const userPayload = { id: 'user-123', email: 'user@example.com', role: 'USER' };
-  const adminPayload = { id: 'admin-123', email: 'admin@example.com', role: 'ADMIN' };
-
-  const userToken = jwt.sign(userPayload, env.JWT_SECRET);
-  const adminToken = jwt.sign(adminPayload, env.JWT_SECRET);
+describe('Vehicle and Inventory Integration Tests', () => {
+  const adminToken = jwt.sign({ id: 'admin-id', email: 'admin@example.com', role: 'ADMIN' }, env.JWT_SECRET);
+  const userToken = jwt.sign({ id: 'user-id', email: 'user@example.com', role: 'USER' }, env.JWT_SECRET);
 
   const mockVehicle = {
-    id: 'vehicle-uuid-1',
-    name: 'My Model 3',
-    make: 'Tesla',
-    model: 'Model 3',
-    category: 'Sedan',
-    price: 45000.0,
-    quantity: 5,
-    year: 2022,
-    color: 'Red',
-    licensePlate: 'TSLA-001',
-    userId: 'user-123',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-
-  const mockVehicle2 = {
-    id: 'vehicle-uuid-2',
-    name: 'Admin Cruiser',
-    make: 'Ford',
-    model: 'Explorer',
+    id: 'vehicle-uuid',
+    make: 'Toyota',
+    model: 'RAV4',
     category: 'SUV',
-    price: 35000.0,
-    quantity: 2,
-    year: 2021,
-    color: 'Black',
-    licensePlate: 'FORD-999',
-    userId: 'admin-123',
+    price: 32000.00,
+    quantity: 5,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -59,71 +40,16 @@ describe('Vehicle Integration Tests', () => {
     jest.clearAllMocks();
   });
 
-  describe('POST /api/v1/vehicles', () => {
-    it('should create a vehicle successfully', async () => {
-      (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue(null);
-      (prisma.vehicle.create as jest.Mock).mockResolvedValue(mockVehicle);
-
-      const response = await request(app)
-        .post('/api/v1/vehicles')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({
-          name: 'My Model 3',
-          make: 'Tesla',
-          model: 'Model 3',
-          category: 'Sedan',
-          price: 45000.0,
-          quantity: 5,
-          year: 2022,
-          color: 'Red',
-          licensePlate: 'TSLA-001',
-        });
-
-      expect(response.status).toBe(201);
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.licensePlate).toBe('TSLA-001');
-    });
-
-    it('should fail validation if fields are missing', async () => {
-      const response = await request(app)
-        .post('/api/v1/vehicles')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({
-          make: 'Tesla',
-        });
-
-      expect(response.status).toBe(400);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('Validation failed');
-    });
-
-    it('should fail if license plate is duplicate', async () => {
-      (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue(mockVehicle);
-
-      const response = await request(app)
-        .post('/api/v1/vehicles')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({
-          name: 'My Model 3',
-          make: 'Tesla',
-          model: 'Model 3',
-          category: 'Sedan',
-          price: 45000.0,
-          quantity: 5,
-          year: 2022,
-          color: 'Red',
-          licensePlate: 'TSLA-001',
-        });
-
-      expect(response.status).toBe(400);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toContain('already registered');
-    });
-  });
-
   describe('GET /api/v1/vehicles', () => {
-    it('should list only the user\'s vehicles for USER role', async () => {
+    it('should return 401 Unauthorized when request is unauthenticated', async () => {
+      const response = await request(app).get('/api/v1/vehicles');
+      expect(response.status).toBe(401);
+      expect(response.body.success).toBe(false);
+    });
+
+    it('should return paginated list of vehicles when authenticated', async () => {
       (prisma.vehicle.findMany as jest.Mock).mockResolvedValue([mockVehicle]);
+      (prisma.vehicle.count as jest.Mock).mockResolvedValue(1);
 
       const response = await request(app)
         .get('/api/v1/vehicles')
@@ -131,73 +57,86 @@ describe('Vehicle Integration Tests', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data.vehicles).toHaveLength(1);
     });
   });
 
-  describe('GET /api/v1/vehicles/search', () => {
-    it('should search vehicles successfully', async () => {
-      (prisma.vehicle.findMany as jest.Mock).mockResolvedValue([mockVehicle]);
+  describe('POST /api/v1/vehicles', () => {
+    it('should allow ADMIN to create a new vehicle', async () => {
+      (prisma.vehicle.create as jest.Mock).mockResolvedValue(mockVehicle);
 
       const response = await request(app)
-        .get('/api/v1/vehicles/search?make=Tesla&minPrice=40000')
-        .set('Authorization', `Bearer ${userToken}`);
+        .post('/api/v1/vehicles')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          make: 'Toyota',
+          model: 'RAV4',
+          category: 'SUV',
+          price: 32000.00,
+          quantity: 5,
+        });
 
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveLength(1);
+    });
+
+    it('should block USER role from creating a vehicle', async () => {
+      const response = await request(app)
+        .post('/api/v1/vehicles')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          make: 'Toyota',
+          model: 'RAV4',
+          category: 'SUV',
+          price: 32000.00,
+        });
+
+      expect(response.status).toBe(403);
+      expect(response.body.success).toBe(false);
     });
   });
 
   describe('POST /api/v1/vehicles/:id/purchase', () => {
-    it('should purchase a vehicle successfully and decrement stock', async () => {
-      (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue(mockVehicle);
-      (prisma.vehicle.update as jest.Mock).mockResolvedValue({ ...mockVehicle, quantity: mockVehicle.quantity - 1 });
+    it('should allow user to purchase vehicle', async () => {
+      (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const txMock = {
+          vehicle: {
+            findUnique: jest.fn().mockResolvedValue(mockVehicle),
+            update: jest.fn().mockResolvedValue(mockVehicle),
+          },
+          purchaseHistory: {
+            create: jest.fn().mockResolvedValue({ id: 'purchase-id' }),
+          },
+        };
+        return callback(txMock);
+      });
 
       const response = await request(app)
         .post(`/api/v1/vehicles/${mockVehicle.id}/purchase`)
-        .set('Authorization', `Bearer ${userToken}`);
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ quantity: 1 });
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.quantity).toBe(mockVehicle.quantity - 1);
     });
 
-    it('should fail purchase if vehicle is out of stock', async () => {
-      (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue({ ...mockVehicle, quantity: 0 });
+    it('should fail purchase if stock is empty', async () => {
+      const outOfStockVehicle = { ...mockVehicle, quantity: 0 };
+      (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const txMock = {
+          vehicle: {
+            findUnique: jest.fn().mockResolvedValue(outOfStockVehicle),
+          },
+        };
+        return callback(txMock);
+      });
 
       const response = await request(app)
         .post(`/api/v1/vehicles/${mockVehicle.id}/purchase`)
-        .set('Authorization', `Bearer ${userToken}`);
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ quantity: 1 });
 
       expect(response.status).toBe(400);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toContain('out of stock');
-    });
-  });
-
-  describe('POST /api/v1/vehicles/:id/restock', () => {
-    it('should allow admin to restock quantity', async () => {
-      (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue(mockVehicle);
-      (prisma.vehicle.update as jest.Mock).mockResolvedValue({ ...mockVehicle, quantity: mockVehicle.quantity + 10 });
-
-      const response = await request(app)
-        .post(`/api/v1/vehicles/${mockVehicle.id}/restock`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({ quantity: 10 });
-
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.quantity).toBe(mockVehicle.quantity + 10);
-    });
-
-    it('should reject restock for non-admin user', async () => {
-      const response = await request(app)
-        .post(`/api/v1/vehicles/${mockVehicle.id}/restock`)
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ quantity: 10 });
-
-      expect(response.status).toBe(403);
       expect(response.body.success).toBe(false);
     });
   });

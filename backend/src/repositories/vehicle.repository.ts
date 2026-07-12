@@ -1,36 +1,33 @@
 import { prisma } from '../config/db';
 import { Prisma, Vehicle } from '@prisma/client';
 
+export interface VehicleSearchFilters {
+  make?: string;
+  model?: string;
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+}
+
 export class VehicleRepository {
-  async create(data: Prisma.VehicleUncheckedCreateInput): Promise<Vehicle> {
-    return prisma.vehicle.create({
-      data,
-    });
+  async create(data: Prisma.VehicleCreateInput): Promise<Vehicle> {
+    return prisma.vehicle.create({ data });
   }
 
   async findById(id: string): Promise<Vehicle | null> {
-    return prisma.vehicle.findUnique({
-      where: { id },
-    });
+    return prisma.vehicle.findUnique({ where: { id } });
   }
 
-  async findByLicensePlate(licensePlate: string): Promise<Vehicle | null> {
-    return prisma.vehicle.findUnique({
-      where: { licensePlate },
-    });
-  }
-
-  async findAllByUserId(userId: string): Promise<Vehicle[]> {
-    return prisma.vehicle.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  async findAll(): Promise<Vehicle[]> {
-    return prisma.vehicle.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(skip = 0, take = 20): Promise<{ vehicles: Vehicle[]; total: number }> {
+    const [vehicles, total] = await Promise.all([
+      prisma.vehicle.findMany({
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.vehicle.count(),
+    ]);
+    return { vehicles, total };
   }
 
   async update(id: string, data: Prisma.VehicleUpdateInput): Promise<Vehicle> {
@@ -40,43 +37,37 @@ export class VehicleRepository {
     });
   }
 
-  async search(filters: {
-    make?: string;
-    model?: string;
-    category?: string;
-    minPrice?: number;
-    maxPrice?: number;
-  }): Promise<Vehicle[]> {
-    const where: Prisma.VehicleWhereInput = {};
+  async delete(id: string): Promise<Vehicle> {
+    return prisma.vehicle.delete({
+      where: { id },
+    });
+  }
+
+  async search(filters: VehicleSearchFilters): Promise<Vehicle[]> {
+    const whereClause: Prisma.VehicleWhereInput = {};
 
     if (filters.make) {
-      where.make = { contains: filters.make, mode: 'insensitive' };
+      whereClause.make = { contains: filters.make, mode: 'insensitive' };
     }
     if (filters.model) {
-      where.model = { contains: filters.model, mode: 'insensitive' };
+      whereClause.model = { contains: filters.model, mode: 'insensitive' };
     }
     if (filters.category) {
-      where.category = { contains: filters.category, mode: 'insensitive' };
+      whereClause.category = { equals: filters.category, mode: 'insensitive' };
     }
     if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
-      where.price = {};
+      whereClause.price = {};
       if (filters.minPrice !== undefined) {
-        where.price.gte = filters.minPrice;
+        whereClause.price.gte = filters.minPrice;
       }
       if (filters.maxPrice !== undefined) {
-        where.price.lte = filters.maxPrice;
+        whereClause.price.lte = filters.maxPrice;
       }
     }
 
     return prisma.vehicle.findMany({
-      where,
+      where: whereClause,
       orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  async delete(id: string): Promise<Vehicle> {
-    return prisma.vehicle.delete({
-      where: { id },
     });
   }
 }

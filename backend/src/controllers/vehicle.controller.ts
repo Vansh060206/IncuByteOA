@@ -8,27 +8,12 @@ export class VehicleController {
     this.vehicleService = new VehicleService();
   }
 
-  createVehicle = async (req: Request, res: Response, next: NextFunction) => {
+  create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { name, make, model, year, color, licensePlate, category, price, quantity } = req.body;
-      const userId = req.user!.id;
-
-      const vehicle = await this.vehicleService.createVehicle({
-        name,
-        make,
-        model,
-        year,
-        color,
-        licensePlate,
-        category,
-        price: Number(price),
-        quantity: quantity !== undefined ? Number(quantity) : 0,
-        userId,
-      });
-
+      const vehicle = await this.vehicleService.createVehicle(req.body);
       return res.status(201).json({
         success: true,
-        message: 'Vehicle registered successfully',
+        message: 'Vehicle created successfully',
         data: vehicle,
       });
     } catch (error) {
@@ -36,32 +21,12 @@ export class VehicleController {
     }
   };
 
-  getVehicles = async (req: Request, res: Response, next: NextFunction) => {
+  getById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = req.user!.id;
-      const role = req.user!.role;
-
-      const vehicles = await this.vehicleService.getVehicles(userId, role);
-
+      const vehicle = await this.vehicleService.getVehicleById(req.params.id as string);
       return res.status(200).json({
         success: true,
-        data: vehicles,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  getVehicleById = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { id } = req.params;
-      const userId = req.user!.id;
-      const role = req.user!.role;
-
-      const vehicle = await this.vehicleService.getVehicleById(id as string, userId, role);
-
-      return res.status(200).json({
-        success: true,
+        message: 'Vehicle retrieved successfully',
         data: vehicle,
       });
     } catch (error) {
@@ -69,15 +34,24 @@ export class VehicleController {
     }
   };
 
-  updateVehicle = async (req: Request, res: Response, next: NextFunction) => {
+  getAll = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      const userId = req.user!.id;
-      const role = req.user!.role;
-      const updateData = req.body;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const result = await this.vehicleService.getAllVehicles(page, limit);
+      return res.status(200).json({
+        success: true,
+        message: 'Vehicles retrieved successfully',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 
-      const vehicle = await this.vehicleService.updateVehicle(id as string, updateData, userId, role);
-
+  update = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const vehicle = await this.vehicleService.updateVehicle(req.params.id as string, req.body);
       return res.status(200).json({
         success: true,
         message: 'Vehicle updated successfully',
@@ -88,72 +62,33 @@ export class VehicleController {
     }
   };
 
-  deleteVehicle = async (req: Request, res: Response, next: NextFunction) => {
+  delete = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id } = req.params;
-      const userId = req.user!.id;
-      const role = req.user!.role;
-
-      const vehicle = await this.vehicleService.deleteVehicle(id as string, userId, role);
-
+      await this.vehicleService.deleteVehicle(req.params.id as string);
       return res.status(200).json({
         success: true,
         message: 'Vehicle deleted successfully',
-        data: vehicle,
+        data: {},
       });
     } catch (error) {
       next(error);
     }
   };
 
-  searchVehicles = async (req: Request, res: Response, next: NextFunction) => {
+  search = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { make, model, category, minPrice, maxPrice } = req.query;
-
-      const vehicles = await this.vehicleService.searchVehicles({
-        make: make as string,
-        model: model as string,
-        category: category as string,
-        minPrice: minPrice ? Number(minPrice) : undefined,
-        maxPrice: maxPrice ? Number(maxPrice) : undefined,
-      });
-
+      const filters = {
+        make: req.query.make as string,
+        model: req.query.model as string,
+        category: req.query.category as string,
+        minPrice: req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined,
+        maxPrice: req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined,
+      };
+      const vehicles = await this.vehicleService.searchVehicles(filters);
       return res.status(200).json({
         success: true,
+        message: 'Search completed successfully',
         data: vehicles,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  purchaseVehicle = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { id } = req.params;
-      const vehicle = await this.vehicleService.purchaseVehicle(id as string);
-
-      return res.status(200).json({
-        success: true,
-        message: 'Vehicle purchased successfully',
-        data: vehicle,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  restockVehicle = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { id } = req.params;
-      const { quantity } = req.body;
-      const role = req.user!.role;
-
-      const vehicle = await this.vehicleService.restockVehicle(id as string, Number(quantity), role);
-
-      return res.status(200).json({
-        success: true,
-        message: 'Vehicle restocked successfully',
-        data: vehicle,
       });
     } catch (error) {
       next(error);

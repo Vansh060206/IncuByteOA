@@ -1,45 +1,52 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+datasource db {
+  provider  = "postgresql"
+}
 
 generator client {
   provider = "prisma-client-js"
 }
 
-datasource db {
-  provider = "postgresql"
-}
-
 enum Role {
-  USER
   ADMIN
+  USER
 }
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
+  id        String            @id @default(uuid())
   name      String
+  email     String            @unique
   password  String
-  role      Role      @default(USER)
-  vehicles  Vehicle[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  role      Role              @default(USER)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  purchases PurchaseHistory[]
+
+  @@map("users")
 }
 
 model Vehicle {
+  id        String            @id @default(uuid())
+  make      String
+  model     String
+  category  String
+  price     Decimal           @db.Decimal(10, 2)
+  quantity  Int               @default(0)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  purchases PurchaseHistory[]
+
+  @@map("vehicles")
+}
+
+model PurchaseHistory {
   id           String   @id @default(uuid())
-  name         String
-  make         String
-  model        String
-  category     String
-  price        Float
-  quantity     Int      @default(0)
-  year         Int
-  color        String
-  licensePlate String   @unique
   userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  vehicleId    String
+  quantity     Int      @default(1)
+  purchaseDate DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("purchase_history")
 }
