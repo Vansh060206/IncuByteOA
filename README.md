@@ -80,29 +80,47 @@ Audit timeline logging system database sync states, model creations, and purchas
 ## 🏗️ System Architecture & Data Flow
 
 ```mermaid
-graph LR
-    subgraph "Client Environment (Vercel)"
-        A[React SPA / Tailwind CSS]
-        B[React Query / Axios]
+graph TD
+    %% Custom Styles %%
+    classDef client fill:#E8F0FE,stroke:#1A73E8,stroke-width:2px,color:#000;
+    classDef gateway fill:#FCE8E6,stroke:#D93025,stroke-width:2px,color:#000;
+    classDef data fill:#E6F4EA,stroke:#188038,stroke-width:2px,color:#000;
+    classDef ci fill:#F1F8E9,stroke:#689F38,stroke-width:2px,color:#000;
+
+    subgraph "🖥️ CLIENT TIER (Vite Single Page Application)"
+        direction LR
+        A["🎨 React 19 Frontend UI<br>(Vite, TS, Tailwind CSS)"] --- B["🔄 TanStack Query & Axios<br>(State & Request Handlers)"]
+        class A,B client;
     end
 
-    subgraph "API Environment (Render)"
-        C[Express Controller Routing]
-        D[JWT Authentication Middleware]
-        E[Prisma ORM Client v7]
+    subgraph "⚙️ APPLICATION GATEWAY TIER (Express API Service)"
+        direction TB
+        C["🔒 CORS Control Middleware<br>(Origins Validation Filter)"] --> D["🛡️ Helmet Security Header Guard"]
+        D --> E["🔑 JWT Session Authentication Handler"]
+        E --> F["⚡ Express Controller Routing Layer"]
+        F --> G["💎 Prisma Client v7 Core Engine"]
+        class C,D,E,F,G gateway;
     end
 
-    subgraph "Cloud Storage (Supabase)"
-        F[(PostgreSQL Cluster)]
-        G[(PgBouncer Connection Pooler)]
+    subgraph "🗄️ DATA STORAGE & CLUSTERING (Cloud PostgreSQL)"
+        direction TB
+        H["🔀 Supabase Transaction Pooler<br>(PgBouncer Port 6543)"] --> I[("🛢️ PostgreSQL Database<br>(Tables: User, Vehicle, PurchaseHistory)")]
+        class H,I data;
     end
 
-    A -->|User Actions| B
-    B -->|CORS Authorized HTTPS / JWT| C
-    C -->|Authorization Guard| D
-    D -->|Prisma Pg Adapter| E
-    E -->|Port 6543| G
-    G --> F
+    subgraph "🤖 AUTOMATED DEPLOYMENT & CI/CD"
+        direction LR
+        J["😺 GitHub Action Runner"] -->|Prisma Generate & Typechecks| K["🐳 Cloud Build Environments"]
+        L["▲ Vercel Hosting Platform"] --- M["☁️ Render Hosting Platform"]
+        class J,K,L,M ci;
+    end
+
+    %% Node Connections %%
+    B -->|HTTPS Requests + JWT Tokens| C
+    G -->|Prisma PostgreSQL Adapter| H
+    K -->|Sync Schema Push| I
+    J -->|Trigger Deployment| L
+    J -->|Trigger Deployment| M
 ```
 
 ### Stack Details:
