@@ -1,0 +1,11 @@
+{
+  "name": "autovault-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend"
+  ],
+  "scripts": {
+    "test:backend": "npm run test --workspace=backend"
+  }
+}
